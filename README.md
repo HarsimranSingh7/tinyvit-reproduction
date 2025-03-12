@@ -1,4 +1,4 @@
-# tinyvit-reproduction# TinyViT Reproduction
+TinyViT Reproduction
 
 ## Implementation of TinyViT-5M Architecture
 
