@@ -2,7 +2,7 @@ TinyViT Reproduction
 
 ## Implementation of TinyViT-5M Architecture
 
-I've successfully implemented the TinyViT-5M architecture as described in the paper. The implementation includes:
+Successfully implemented the TinyViT-5M architecture as described in the paper. The implementation includes:
 
 1. **Building Blocks (models/blocks.py)**:
    - PatchEmbed: Converts images to patch embeddings
@@ -20,7 +20,7 @@ I've successfully implemented the TinyViT-5M architecture as described in the pa
 
 ## Fast Distillation Framework
 
-I've implemented the fast distillation framework described in the paper:
+Implemented the fast distillation framework described in the paper:
 
 1. **Logit Distillation (distillation/logit_distill.py)**:
    - Created a FastDistillation class that handles:
