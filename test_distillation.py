@@ -3,15 +3,9 @@ import torchvision
 import torchvision.transforms as transforms
 from models.tinyvit import tinyvit_5m
 from distillation.logit_distill import FastDistillation
+from utils.data_utils import DatasetWithIDs
 import timm
 import os
-
-# Define collate function outside of main
-def collate_with_ids(batch):
-    inputs = torch.stack([item[0] for item in batch])
-    labels = torch.tensor([item[1] for item in batch])
-    ids = [str(i) for i in range(len(batch))]
-    return inputs, labels, ids
 
 def main():
     # Set device
@@ -34,6 +28,9 @@ def main():
     subset_size = 100
     subset_indices = torch.randperm(len(trainset))[:subset_size]
     subset = torch.utils.data.Subset(trainset, subset_indices)
+    
+    # Wrap the subset with our ID generator
+    subset_with_ids = DatasetWithIDs(subset)
     
     # Use num_workers=0 to avoid multiprocessing issues
     trainloader = torch.utils.data.DataLoader(
@@ -61,9 +58,9 @@ def main():
     # Precompute teacher logits
     logit_path = os.path.join(logit_dir, 'cifar10_test_logits.pkl')
     
-    # Use num_workers=0 to avoid multiprocessing issues
+    # Use the dataset with IDs - now we can enable shuffle if desired
     trainloader_with_ids = torch.utils.data.DataLoader(
-        subset, batch_size=10, shuffle=False, num_workers=0, collate_fn=collate_with_ids
+        subset_with_ids, batch_size=10, shuffle=True, num_workers=0
     )
     
     # Precompute logits
@@ -74,7 +71,7 @@ def main():
     new_distiller.load_logits(logit_path)
     
     # Test distillation loss
-    for inputs, _, ids in trainloader_with_ids:
+    for inputs, labels, ids in trainloader_with_ids:
         inputs = inputs.to(device)
         student_outputs = student_model(inputs)
         
