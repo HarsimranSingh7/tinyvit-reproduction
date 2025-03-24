@@ -135,3 +135,25 @@ def tinyvit_5m(pretrained=False, **kwargs):
         **kwargs
     )
     return model
+
+
+def tinyvit_finetune(num_classes, pretrained_model_path=None):
+    """Load TinyViT, replace head, and freeze other layers."""
+    model = TinyViT(
+        embed_dims=[64, 128, 160, 320],
+        depths=[2, 2, 6, 2],
+        num_heads=[2, 4, 5, 10],
+        mlp_ratios=[4, 4, 4, 4],
+        num_classes=num_classes  # Set new number of classes
+    )
+    
+    if pretrained_model_path:
+        state_dict = torch.load(pretrained_model_path)
+        model.load_state_dict(state_dict, strict=False)  # Allow different head
+    
+    # Freeze all layers except the classification head
+    for name, param in model.named_parameters():
+        if "head" not in name: 
+            param.requires_grad = False
+    
+    return model

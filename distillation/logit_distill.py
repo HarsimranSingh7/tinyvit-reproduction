@@ -133,3 +133,37 @@ class FastDistillation:
             return total_loss / valid_samples
         else:
             return torch.tensor(0.0, device=device)
+        
+    def distillation_labels(self, student_logits, image_ids, device):
+        """
+        Get the teacher labels from sparse logits
+        
+        Args:
+            student_logits: Logits from student model [batch_size, num_classes]
+            image_ids: List of image IDs corresponding to the batch
+            device: Device for computation
+        
+        Returns:
+            Distillation labels
+        """
+        batch_size, num_classes = student_logits.shape
+
+        sparse_teacher = torch.zeros((batch_size, num_classes), device=device)
+
+        for i, img_id in enumerate(image_ids):
+            img_id_key = str(img_id) if not isinstance(img_id, str) else img_id
+            teacher_values, teacher_indices = self.logit_storage[img_id_key]
+
+            teacher_values = torch.tensor(teacher_values, device=device)
+            teacher_indices = torch.tensor(teacher_indices, device=device)
+
+            sparse_teacher[i, teacher_indices] = teacher_values
+
+            smooth_value = (1 - teacher_values.sum()) / (num_classes - self.k)  # label smoothing
+
+            # Add smoothing to non-selected indices
+            mask = torch.ones(num_classes, device=device)
+            mask[teacher_indices] = 0  # Ignore teacher-assigned indices
+            sparse_teacher[i] += smooth_value * mask 
+
+        return sparse_teacher
