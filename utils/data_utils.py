@@ -117,7 +117,7 @@ def get_CIFAR_100(path, batch_size, num_workers=0, use_ids=False):
     }
     return loaders
 
-def get_imagenet_subset_loaders(root, subset_fraction=0.1, batch_size=128, num_workers=4, use_ids=False):
+def get_imagenet_subset_loaders(root, subset_fraction=0.1, batch_size=128, num_workers=0, use_ids=False):
     """
     Get ImageNet subset dataloaders for training and validation
     

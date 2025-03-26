@@ -1,0 +1,22 @@
+name: tinyvit
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.11
+  - pytorch=2.2.0
+  - torchvision=0.17.0
+  - numpy=1.26.3
+  - pip
+  - pillow=10.2.0
+  - notebook=7.0.6
+  - matplotlib=3.8.0
+  - tqdm==4.67.1
+  - pip:
+      - tensorboard==2.12.0
+      - tensorboard-data-server==0.7.0
+      - tensorboard-plugin-wit==1.8.1
+      - timm==0.9.16
+      - torchtext==0.17.1
+      - pudb
+

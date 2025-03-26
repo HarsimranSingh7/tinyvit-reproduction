@@ -19,7 +19,7 @@ def save_pth(model, name):
     torch.save(model.state_dict(), f'{name}.pth')
 
 def train_loop(model, dataloader, optimizer, scheduler, loss_fn, max_iter, name):
-    writer = SummaryWriter(log_dir=f"runs/{name}_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}")
+    writer = SummaryWriter(log_dir=f"runs/{name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}")
 
     best_acc = 0.0
 
@@ -102,8 +102,7 @@ def train_with_distillation(model, dataloaders, optimizer, scheduler, loss_fn,
             
             with torch.no_grad():
                 pred = model(im)
-                distillation_labels = distiller.distillation_labels(pred, ids, device)
-                loss = loss_fn(pred,distillation_labels)
+                loss = loss_fn(pred,label)
                 accuracy = compute_accuracy(pred, label)
                 val_losses.append(loss.item())
                 val_accuracies.append(accuracy)

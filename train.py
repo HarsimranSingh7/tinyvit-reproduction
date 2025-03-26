@@ -3,11 +3,27 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import SequentialLR, LinearLR, CosineAnnealingLR
+import timm
 
 from models.tinyvit import tinyvit_5m, tinyvit_finetune
 from distillation.logit_distill import FastDistillation
 from utils.train_utils import *
 from utils.data_utils import *
+
+# subset training
+# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNet'
+
+# precompute logits
+# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --logits-path '~/Desktop/data/logits' --get-teacher True
+
+# distillation
+# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNetDistillation' --logits-path '~/Desktop/data/logits' --use-distillation True
+
+# transfer learning
+# python train.py --train-data '~/Desktop/data' --logits-path '~/Desktop/data/C100logits' --get-teacher True --dataset 'cifar100' --load-model 'subsetImNetDistillation'
+
+# python train.py --train-data '~/Desktop/data' --name 'subsetImNetDistillationTransfer' --logits-path '~/Desktop/data/C100logits' --use-distillation True --dataset 'cifar100' --load-model 'subsetImNetDistillation'
+
 
 def get_args():
     parser = argparse.ArgumentParser(description="Training Script")
@@ -15,12 +31,14 @@ def get_args():
     parser.add_argument("--max-iter", type=int, default=300, help="Maximum number of training iterations")
     parser.add_argument("--warmup-epochs", type=int, default=20, help="Number of warm-up epochs")
     parser.add_argument("--train-data", type=str, required=True, help="Path to training data")
+    parser.add_argument("--subset-fraction", type=float, default=1.0, help="The fraction of data should use")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--weight-decay", type=float, default=0.05, help="Weight Decay")
     parser.add_argument("--batch-size", type=int, default=1024, help="Batch size")
     parser.add_argument("--name", type=str, required=True, help="Model architecture name")
     parser.add_argument("--load-model", type=str, default=None, help="Path to pre-trained model (optional)")
-    parser.add_argument("--use-distillation", action="store_true", help="Enable distillation")
+    parser.add_argument("--use-distillation", type=bool, default=False, help="Enable distillation")
+    parser.add_argument("--get-teacher", type=bool, default=False, help="Calculate teacher model logits")
     parser.add_argument("--logits-path", type=str, default=None, help="Path to pre-computed teacher logits")
     parser.add_argument("--distill-temp", type=float, default=1.0, help="Distillation temperature")
     parser.add_argument("--dataset", type=str, default="imagenet", choices=["imagenet", "cifar100"], help="Dataset to use")
@@ -30,8 +48,6 @@ def get_args():
 if __name__ == '__main__':
     args = get_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    
 
     # Setup finetune or base model
     if args.dataset == "cifar100":
@@ -47,8 +63,16 @@ if __name__ == '__main__':
 
         if args.load_model:
             load_pth(model, args.load_model)
-        dataloaders = get_ImageNet1K(args.train_data, args.batch_size, use_ids=args.use_distillation)
+        dataloaders = get_imagenet_subset_loaders(args.train_data, args.subset_fraction, args.batch_size, use_ids=args.use_distillation)
         optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
+    if args.get_teacher:
+        print("start logits computation")
+        teacher_model = timm.create_model('resnet18', pretrained=True, num_classes=10)
+        teacher_model = teacher_model.to(device)
+        distiller = FastDistillation(teacher_model, k=5, logit_dir=args.logits_path)
+        distiller.precompute_teacher_logits(dataloaders["train"], device, save_path=args.logits_path)
+        exit
 
     # Setup optimizer and scheduler
     warmup_scheduler = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=args.warmup_epochs)
