@@ -38,7 +38,7 @@ def train_loop(model, dataloader, optimizer, scheduler, loss_fn, max_iter, name)
 
             optimizer.step()
             scheduler.step()
-            del im, labels
+            del im, label
 
         model.eval()
         cur_val_losses = []
@@ -52,7 +52,7 @@ def train_loop(model, dataloader, optimizer, scheduler, loss_fn, max_iter, name)
                 accuracy = compute_accuracy(pred,label)
                 cur_val_losses.append(loss.item())
                 cur_val_accuracies.append(accuracy.item())
-            del im, labels
+            del im, label
 
         avg_val_loss = np.array(cur_val_losses).mean()
         avg_val_accuracies = np.array(cur_val_accuracies).mean()
@@ -107,7 +107,7 @@ def train_with_distillation(model, dataloaders, optimizer, scheduler, loss_fn,
                 val_losses.append(loss.item())
                 val_accuracies.append(accuracy)
             
-            del im, labels
+            del im, label
 
         avg_val_loss = np.mean(val_losses)
         avg_val_accuracy = np.mean(val_accuracies)
