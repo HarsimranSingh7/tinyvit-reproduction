@@ -37,8 +37,8 @@ def train_loop(model, dataloader, optimizer, scheduler, loss_fn, max_iter, name)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
 
             optimizer.step()
-            scheduler.step()
             del im, label
+        scheduler.step()
 
         model.eval()
         cur_val_losses = []
@@ -90,8 +90,8 @@ def train_with_distillation(model, dataloaders, optimizer, scheduler, loss_fn,
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
 
             optimizer.step()
-            scheduler.step()
             del im
+        scheduler.step()
 
         model.eval()
         val_losses = []

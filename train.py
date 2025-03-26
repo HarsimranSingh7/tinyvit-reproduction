@@ -11,7 +11,7 @@ from utils.train_utils import *
 from utils.data_utils import *
 
 # subset training
-# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNet'
+# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNet' --batch-size 16
 
 # precompute logits
 # python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --logits-path '~/Desktop/data/logits' --get-teacher True
