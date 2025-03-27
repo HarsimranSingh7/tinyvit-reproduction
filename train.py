@@ -14,15 +14,15 @@ from utils.data_utils import *
 # python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNet' --batch-size 16
 
 # precompute logits
-# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --logits-path '~/Desktop/data/logits' --get-teacher True
+# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --logits-path '~/Desktop/data/logits' --get-teacher True --batch-size 16
 
 # distillation
-# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNetDistillation' --logits-path '~/Desktop/data/logits' --use-distillation True
+# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNetDistillation' --logits-path '~/Desktop/data/logits' --use-distillation True --batch-size 16
 
 # transfer learning
-# python train.py --train-data '~/Desktop/data' --logits-path '~/Desktop/data/C100logits' --get-teacher True --dataset 'cifar100' --load-model 'subsetImNetDistillation'
+# python train.py --train-data '~/Desktop/data' --logits-path '~/Desktop/data/C100logits' --get-teacher True --dataset 'cifar100' --load-model 'subsetImNetDistillation' --batch-size 16
 
-# python train.py --train-data '~/Desktop/data' --name 'subsetImNetDistillationTransfer' --logits-path '~/Desktop/data/C100logits' --use-distillation True --dataset 'cifar100' --load-model 'subsetImNetDistillation'
+# python train.py --train-data '~/Desktop/data' --name 'subsetImNetDistillationTransfer' --logits-path '~/Desktop/data/C100logits' --use-distillation True --dataset 'cifar100' --load-model 'subsetImNetDistillation' --batch-size 16
 
 
 def get_args():
@@ -47,7 +47,12 @@ def get_args():
 
 if __name__ == '__main__':
     args = get_args()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+    elif torch.backends.mps.is_available():
+        device = torch.device('mps')
+    else:
+        device = torch.device('cpu')
 
     # Setup finetune or base model
     if args.dataset == "cifar100":

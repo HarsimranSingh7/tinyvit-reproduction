@@ -3,7 +3,12 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import datetime
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+elif torch.backends.mps.is_available():
+    device = torch.device('mps')
+else:
+    device = torch.device('cpu')
 
 def compute_accuracy(prediction,gt_labels):
     preds = torch.argmax(prediction, dim=1)
@@ -51,7 +56,7 @@ def train_loop(model, dataloader, optimizer, scheduler, loss_fn, max_iter, name)
                 loss = loss_fn(pred, label)
                 accuracy = compute_accuracy(pred,label)
                 cur_val_losses.append(loss.item())
-                cur_val_accuracies.append(accuracy.item())
+                cur_val_accuracies.append(accuracy)
             del im, label
 
         avg_val_loss = np.array(cur_val_losses).mean()
@@ -62,7 +67,7 @@ def train_loop(model, dataloader, optimizer, scheduler, loss_fn, max_iter, name)
         # print out stats and save best model every 10 its
         if iter % 10 == 0:
             print(f'Iteration: {iter} | Loss: {avg_val_loss} | Accuracy: {avg_val_accuracies}')
-            if avg_val_accuracies < best_acc:
+            if avg_val_accuracies > best_acc:
                 save_pth(model, name)
                 best_acc = avg_val_accuracies
 
