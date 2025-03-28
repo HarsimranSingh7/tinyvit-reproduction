@@ -75,9 +75,14 @@ if __name__ == '__main__':
         print("start logits computation")
         teacher_model = timm.create_model('resnet18', pretrained=True, num_classes=10)
         teacher_model = teacher_model.to(device)
-        distiller = FastDistillation(teacher_model, k=5, logit_dir=args.logits_path)
-        distiller.precompute_teacher_logits(dataloaders["train"], device, save_path=args.logits_path)
-        exit
+
+        # FIX
+        logit_file_path = args.logits_path
+        logit_dir = os.path.dirname(logit_file_path)
+        
+        distiller = FastDistillation(teacher_model, k=5, logit_dir=logit_dir)
+        distiller.precompute_teacher_logits(dataloaders["train"], device, save_path=logit_file_path)
+        exit()
 
     # Setup optimizer and scheduler
     warmup_scheduler = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=args.warmup_epochs)
