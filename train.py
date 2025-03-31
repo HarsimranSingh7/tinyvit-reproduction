@@ -14,10 +14,10 @@ from utils.data_utils import *
 # python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNet' --batch-size 16
 
 # precompute logits
-# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --logits-path '~/Desktop/data/logits' --get-teacher True --batch-size 16
+# python train.py --train-data '~/Desktop/data' --logits-path '/Users/popo/Desktop/data/logits.pkl' --get-teacher True --batch-size 16 --name 'subsetImNetDistillation'
 
 # distillation
-# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNetDistillation' --logits-path '~/Desktop/data/logits' --use-distillation True --batch-size 16
+# python train.py --train-data '~/Desktop/data' --subset-fraction 0.1 --name 'subsetImNetDistillation' --logits-path '/Users/popo/Desktop/data/logits.pkl' --use-distillation True --batch-size 16
 
 # transfer learning
 # python train.py --train-data '~/Desktop/data' --logits-path '~/Desktop/data/C100logits' --get-teacher True --dataset 'cifar100' --load-model 'subsetImNetDistillation' --batch-size 16
@@ -68,12 +68,12 @@ if __name__ == '__main__':
 
         if args.load_model:
             load_pth(model, args.load_model)
-        dataloaders = get_imagenet_subset_loaders(args.train_data, args.subset_fraction, args.batch_size, use_ids=args.use_distillation)
+        dataloaders = get_imagenet_subset_loaders(args.train_data, args.subset_fraction, args.batch_size, use_ids=(args.use_distillation or args.get_teacher))
         optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     if args.get_teacher:
         print("start logits computation")
-        teacher_model = timm.create_model('resnet18', pretrained=True, num_classes=10)
+        teacher_model = timm.create_model('resnet18', pretrained=True, num_classes=1000)
         teacher_model = teacher_model.to(device)
 
         # FIX
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         if not args.logits_path:
             raise ValueError("Must provide path to pre-computed teacher logits when using distillation")
         
-        distiller = FastDistillation(k=10, temperature=args.distill_temp, logit_dir=args.logits_path)
+        distiller = FastDistillation(k=10, temperature=args.distill_temp)
         distiller.load_logits(args.logits_path)
         
         train_with_distillation(model, dataloaders, optimizer, scheduler, ce_loss_fn, 

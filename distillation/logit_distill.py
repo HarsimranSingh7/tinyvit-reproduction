@@ -4,6 +4,9 @@ import torch.nn.functional as F
 import os
 import pickle
 from tqdm import tqdm
+import numpy as np
+
+from utils.train_utils import compute_accuracy
 
 class FastDistillation:
     """
@@ -43,6 +46,7 @@ class FastDistillation:
         
         print(f"Precomputing teacher logits with k={self.k}...")
         
+        accuracies = []
         with torch.no_grad():
             for batch in tqdm(dataloader):
                 # Unpack batch - adjust based on your dataloader
@@ -53,12 +57,15 @@ class FastDistillation:
                     image_ids = [f"{i}" for i in range(inputs.shape[0])]
                 elif len(batch) == 3:
                     # (inputs, labels, image_ids) format
-                    inputs, _, image_ids = batch
+                    inputs, labels, image_ids = batch
                 
                 inputs = inputs.to(device)
                 
                 # Get teacher logits
                 logits = self.teacher_model(inputs)
+
+                # normalize logits
+                logits = F.softmax(logits, dim=1)
                 
                 # Get top-k values and indices
                 values, indices = torch.topk(logits, k=self.k, dim=1)
@@ -70,13 +77,15 @@ class FastDistillation:
                         values[i].cpu().numpy(),
                         indices[i].cpu().numpy()
                     )
+
+                accuracies.append(compute_accuracy(logits.cpu(), labels))
         
-        print(f"Precomputed logits for {len(self.logit_storage)} images")
+        print(f"Precomputed logits for {len(self.logit_storage)} images with accuracy: {np.mean(accuracies)}")
         
         # Save logits if path provided
         if save_path:
             with open(save_path, 'wb') as f:
-                pickle.dump(self.logit_storage, f)
+                pickle.dump(self.logit_storage, f, protocol=pickle.HIGHEST_PROTOCOL)  
             print(f"Saved logits to {save_path}")
     
     def load_logits(self, path):

@@ -28,6 +28,7 @@ def train_loop(model, dataloader, optimizer, scheduler, loss_fn, max_iter, name)
 
     best_acc = 0.0
 
+    train_accuracies = []
     for iter in range(max_iter):
         model.train()
         for im, label in dataloader["train"]:
@@ -42,8 +43,11 @@ def train_loop(model, dataloader, optimizer, scheduler, loss_fn, max_iter, name)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
 
             optimizer.step()
+            accuracy = compute_accuracy(pred, label)
+            train_accuracies.append(accuracy)
             del im, label
         scheduler.step()
+        writer.add_scalar('Train Accuracy', np.mean(train_accuracies), iter)
 
         model.eval()
         cur_val_losses = []
@@ -78,10 +82,12 @@ def train_with_distillation(model, dataloaders, optimizer, scheduler, loss_fn,
 
     best_acc = 0.0
 
+    train_accuracies = []
     for iter in range(max_iter):
         model.train()
         for im, label, ids in dataloaders["train"]:
             im = im.to(device, non_blocking=True)
+            label = label.to(device, non_blocking=True)
             
             optimizer.zero_grad()
             pred = model(im)
@@ -95,8 +101,11 @@ def train_with_distillation(model, dataloaders, optimizer, scheduler, loss_fn,
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
 
             optimizer.step()
-            del im
+            accuracy = compute_accuracy(pred, torch.argmax(distillation_labels, dim=1))
+            train_accuracies.append(accuracy)
+            del im, label
         scheduler.step()
+        writer.add_scalar('Train Accuracy', np.mean(train_accuracies), iter)
 
         model.eval()
         val_losses = []
