@@ -1,105 +1,188 @@
-# TinyViT Reproduction
+# TinyViT Reproduction Study
 
-This repository contains a PyTorch implementation of the TinyViT architecture and fast distillation framework as described in the paper ["TinyViT: Fast Pretraining Distillation for Small Vision Transformers"](https://arxiv.org/abs/2207.10666) (ECCV 2022).
+This repository contains a PyTorch-based reproduction study of the TinyViT architecture and its training methodologies, as originally presented in the paper [**"TinyViT: Fast Pretraining Distillation for Small Vision Transformers"**](https://arxiv.org/abs/2207.10666) (ECCV 2022). This project focuses specifically on reproducing and evaluating the TinyViT-5M and TinyViT-11M variants under computationally constrained conditions.
 
-## Implementation of TinyViT-5M Architecture
+---
 
-Successfully implemented the TinyViT-5M architecture as described in the paper. The implementation includes:
+## Project Overview
 
-1. **Building Blocks (models/blocks.py)**:
+The goal of this project was to reproduce the core findings of the TinyViT paper, focusing on:
 
-- PatchEmbed: Converts images to patch embeddings
-- PatchMerging: Hierarchical feature map downsampling
-- MBConv: Mobile Inverted Bottleneck blocks for early stages
-- TransformerBlock: Standard transformer blocks with attention and MLP
-- Attention: Multi-head self-attention mechanism
-- Mlp: MLP blocks used in transformer layers
+1. **TinyViT-5M and TinyViT-11M Base Models**: Implementing and training these lightweight ConvNet architectures from scratch.
+2. **Knowledge Distillation**: Implementing the Fast Pretraining Distillation technique using precomputed teacher logits to improve the performance and training efficiency of the TinyViT models.
 
-2. **Main Architecture (models/tinyvit.py)**:
+Experiments were conducted using subsets (10% and 30%) of the ImageNet-1K dataset and standard data augmentations due to resource limitations. We explored different teacher models, including ConvNeXt-Base, DeiT-B, and EfficientNet-B0.
 
-- Implemented the full TinyViT model with configurable parameters
-- Created the TinyViT-5M variant with appropriate embedding dimensions, depths, and heads
-- Added proper initialization and forward methods
-- Verified parameter count matches the expected ~5.4M parameters
+---
 
-## Fast Distillation Framework
+## Key Features Implemented
 
-Implemented the fast distillation framework described in the paper:
+- **TinyViT Architectures**:
+  - `models/tinyvit.py`: TinyViT-5M
+  - `models/tinyvit_11m.py`: TinyViT-11M
+  - `models/blocks.py`: Core building blocks
 
-1. **Logit Distillation (distillation/logit_distill.py)**:
+- **Fast Distillation Framework**:
+  - Sparse (top-k) teacher logits: `distillation/logit_distill.py`, `distillation/fast_distillation.py`
+  - KL divergence (soft targets) + Cross-Entropy (hard targets) loss functions
+  - Consistent image ID mapping: `utils/data_utils.py`
 
-- Created a FastDistillation class that handles:
-    - Precomputing and storing sparse teacher logits (top-k values)
-    - Loading and saving logits to disk for efficiency
-    - Computing distillation loss using the stored logits
-- Implemented temperature scaling for the distillation loss
-- Added support for batch processing with unique image IDs
+- **Training Pipelines**:
+  - `train.py`: Training TinyViT-5M (baseline, distillation, CIFAR-100 transfer)
+  - `train_tinyvit_11m.py`: Training TinyViT-11M (baseline, distillation with EfficientNet-B0)
+  - Features: AdamW, cosine LR schedule, warmup, gradient clipping, mixed-precision (11M)
 
-2. **Robust ID Generation (utils/data_utils.py)**:
+- **Evaluation**:
+  - `evaluate_tinyvit_11m.py`: Evaluate trained TinyViT-11M models
 
-- Implemented `DatasetWithIDs` class that assigns permanent IDs to images
-- Ensures consistent image-to-logit mapping even with shuffled data
-- Uses file paths as IDs for ImageFolder datasets
-- Uses hash-based IDs for other datasets like CIFAR
+- **Data Handling**:
+  - `utils/data_utils.py`: Load ImageNet subsets and CIFAR-100
 
-## Data Loading Utilities
+- **Visualization**:
+  - `visualize_results.py`: training/validation curves, comparisons
+  - `visualize_attention.py`: attention maps (for conceptual insights)
 
-Implemented data loading utilities in `utils/data_utils.py`:
+---
 
-1. **Dataset Wrappers**:
+## Setup
 
-- `DatasetWithIDs`: Wraps datasets to include permanent image IDs with each item
-- Supports ImageFolder, CIFAR, and custom datasets
+```bash
+conda env create -f environment.yaml
+conda activate tinyvit
+```
 
-2. **DataLoaders**:
-
-- `get_CIFAR_100`: Creates dataloaders for CIFAR-100 with proper transformations
-- `get_ImageNet1K`: Creates dataloaders for ImageNet with proper transformations
-- `get_imagenet_subset_loaders`: Creates dataloaders for a subset of ImageNet
-
-## Training Utilities
-
-Implemented training utilities:
-
-1. **Training Loop (utils/train_utils.py)**:
-
-- Standard training loop with logging and model saving
-- Evaluation utilities for tracking accuracy
-
-2. **Training with Distillation (train.py)**:
-
-- Specialized training loop that combines cross-entropy and distillation losses
-- Configurable distillation temperature and weight
-- Support for different datasets (CIFAR-100, ImageNet)
-
-## Verification
-
-All components have been verified with test scripts:
-
-- `test_model.py`: Confirms parameter count and forward pass
-- `test_distillation.py`: Tests the distillation framework with consistent image IDs
+---
 
 ## Usage
 
-### Training TinyViT with Distillation
+> **Note:** Adjust paths like `--train-data`, `--output-dir`, `--logits-path` as needed.
+
+### 1. Precompute Teacher Logits
+
+#### For TinyViT-5M (e.g., ConvNeXt-Base)
 
 ```bash
-# Precompute teacher logits
-python precompute_logits.py --dataset cifar100 --teacher-model resnet50 --k 10 --output-path ./logits/cifar100_logits.pkl
-
-# Train with distillation on CIFAR-100
-python train.py --dataset cifar100 --train-data ./data --name tinyvit_5m_distill --use-distillation --logits-path ./logits/cifar100_logits.pkl --distill-alpha 0.5 --distill-temp 1.0
+python train.py --get-teacher --teacher-model convnext_base \
+  --train-data /path/to/imagenet/subset \
+  --logits-path ./logits/convnext_base_logits.pkl \
+  --batch-size 64 --subset-fraction 0.1
 ```
 
-### Training TinyViT without Distillation
+#### For TinyViT-11M (EfficientNet-B0)
 
 ```bash
-python train.py --dataset cifar100 --train-data ./data --name tinyvit_5m_baseline
+python train_tinyvit_11m.py --get-teacher --teacher-model efficientnet_b0 \
+  --data-path /path/to/imagenet/subset \
+  --logits-path ./logits/efficientnet_b0_logits_30pct.pkl \
+  --batch-size 128 --subset-fraction 0.3 --device cuda
 ```
 
-## Next Steps
+---
 
-- Run experiments on CIFAR-100 and ImageNet subset
-- Compare performance with and without distillation
-- Investigate the impact of different distillation temperatures and weights
-- Extend to other TinyViT variants (TinyViT-11M, TinyViT-21M)
+### 2. Train Baseline Models
+
+#### TinyViT-5M on 10% ImageNet
+
+```bash
+python train.py --train-data /path/to/imagenet/subset \
+  --name tinyvit_5m_baseline_10pct --batch-size 16 \
+  --subset-fraction 0.1 --max-iter 300 --warmup-epochs 20
+```
+
+#### TinyViT-11M on 30% ImageNet
+
+```bash
+python train_tinyvit_11m.py --data-path /path/to/imagenet/subset \
+  --name tinyvit_11m_baseline_30pct --output-dir ./output \
+  --log-dir ./runs --batch-size 128 --subset-fraction 0.3 \
+  --epochs 200 --warmup-epochs 20 --device cuda --mixed-precision
+```
+
+---
+
+### 3. Train Distilled Models
+
+#### TinyViT-5M + DeiT-B on 10% ImageNet
+
+```bash
+python train.py --train-data /path/to/imagenet/subset \
+  --name tinyvit_5m_distill_deitb_10pct --batch-size 16 \
+  --subset-fraction 0.1 --max-iter 300 --warmup-epochs 20 \
+  --use-distillation True \
+  --logits-path ./logits/deit_base_logits_10pct.pkl
+```
+
+#### TinyViT-11M + EfficientNet-B0 on 30% ImageNet
+
+```bash
+python train_tinyvit_11m.py --data-path /path/to/imagenet/subset \
+  --name tinyvit_11m_distill_effb0_30pct --output-dir ./output \
+  --log-dir ./runs --batch-size 128 --subset-fraction 0.3 \
+  --epochs 200 --warmup-epochs 20 --use-distillation \
+  --logits-path ./logits/efficientnet_b0_logits_30pct.pkl \
+  --distill-alpha 0.5 --temperature 1.0 --device cuda --mixed-precision
+```
+
+---
+
+### 4. Evaluate Models
+
+```bash
+python evaluate_tinyvit_11m.py --data-path /path/to/imagenet/subset \
+  --model-path ./output/tinyvit_11m_distill_effb0_30pct_best.pth \
+  --subset-fraction 0.3 --batch-size 128 --device cuda
+```
+
+---
+
+### 5. Generate Visualizations
+
+```bash
+python visualize_results.py
+python visualize_attention.py
+```
+
+---
+
+## Results Summary
+
+- Successfully reproduced TinyViT-5M and TinyViT-11M architectures.
+- **TinyViT-5M** achieved >40% validation accuracy on 10% ImageNet despite limited setup.
+- **Knowledge distillation** helped accelerate convergence and improve accuracy.
+- Observed overfitting in TinyViT-5M (especially with ConvNeXt teacher) on small datasets.
+- **TinyViT-11M + EfficientNet-B0** on 30% ImageNet generalized well with minimal train-val gap.
+- Findings align with the paper's claims — TinyViT is competitive, but sensitive to data size, augmentations, and hyperparameters.
+
+---
+
+## Limitations
+
+- **Dataset Size**: Used 10% and 30% ImageNet subsets only.
+- **Augmentation**: Basic transformations only (no MixUp/CutMix/RandAugment).
+- **Hardware**: Some training on CPU (e.g., MacBook Pro); main GPU used: Google Colab Pro (T4, A100).
+- **Distillation**: Used only logit-level distillation (no feature-level or layer-level).
+
+---
+
+## Citation
+
+If you use this work, please cite the original TinyViT paper:
+
+```bibtex
+@inproceedings{wu2022tinyvit,
+  title={TinyViT: Fast Pretraining Distillation for Small Vision Transformers},
+  author={Wu, Kan and Peng, Jiachen and Hou, Qihang and Xiao, Yizeng and Fan, Dongfang and Geng, Zehuan and Xie, Jun},
+  booktitle={European Conference on Computer Vision},
+  pages={68--85},
+  year={2022},
+  organization={Springer}
+}
+```
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
+
+---
